@@ -1,8 +1,10 @@
 import { Alert, Button, Typography } from "antd";
 import { SERVER_HOST } from "../../constants";
 import useDoorprizeWebsocket from "../../hooks/useDoorprizeWebsocket";
+import useGet from "../../hooks/useGet";
 
 const Remote = () => {
+  const { data: items } = useGet(`${SERVER_HOST}/items`);
   const { number, isRandomizing, isDisconnected } = useDoorprizeWebsocket();
 
   const handleButtonClick = async () => {
@@ -24,9 +26,11 @@ const Remote = () => {
           flexDirection: "column",
         }}
       >
-        <Typography.Title>
-          {isRandomizing ? "Shuffling..." : String(number)}
-        </Typography.Title>
+        {number && (
+          <Typography.Title>
+            {isRandomizing ? "Shuffling..." : String(items[number])}
+          </Typography.Title>
+        )}
         {isDisconnected && (
           <Alert
             message="Connection Disconnected, Please Refresh"

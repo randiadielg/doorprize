@@ -7,17 +7,22 @@ const server: FastifyInstance = Fastify({});
 
 const connectedSockets: any[] = [];
 
-const MAX_NUMBER = 200;
-
 let winnersArray: number[] = [];
 let winners: Record<string, any> = { 0: { isCancelled: true } };
+let items: string[] | number[] = [];
+
+let maxNumber: number;
 
 try {
   const data = fs.readFileSync("./db.txt", "utf8");
   const array = fs.readFileSync("./array.txt", "utf8");
-  if (data) {
+  const itemsFileData = fs.readFileSync("./items.txt", "utf8");
+
+  if (data || array) {
     winners = JSON.parse(data);
     winnersArray = JSON.parse(array);
+    items = JSON.parse(itemsFileData);
+    maxNumber = items.length;
     console.log("DB Load Data Success");
   }
 } catch (err) {
@@ -31,6 +36,12 @@ const syncToDb = () => {
   } catch (err) {
     console.error(err);
   }
+};
+
+const announceAllConnectedSockets = (message: string) => {
+  connectedSockets.forEach((socket) => {
+    socket.send(message);
+  });
 };
 
 server.register(FastifyWebsocket);
@@ -59,16 +70,10 @@ server.register(async (server) => {
   });
 });
 
-server.get("/hello", (request, reply) => {
-  reply.send({
-    message: "Hello Fastify",
-  });
-});
-
 const isReshuffled = (num: number) => {
   if (Boolean(winners[num]?.isCancelled)) return true;
   if (winners[num]?.isWin) return true;
-  if (Object.keys(winners).length < 0.2 * MAX_NUMBER) {
+  if (Object.keys(winners).length < 0.2 * maxNumber) {
     if (winners[num + 1]) return true;
     if (winners[num + 2]) return true;
     if (winners[num - 1]) return true;
@@ -77,19 +82,28 @@ const isReshuffled = (num: number) => {
   return false;
 };
 
+server.get("/ping", (_, reply) => {
+  reply.send({
+    message: "OK",
+  });
+});
+
 server.get("/trigger", (request, reply) => {
   reply.header("cors", "*");
   let randomNum = -1;
 
   do {
-    randomNum = Math.round(Math.random() * MAX_NUMBER);
+    randomNum = Math.round(Math.random() * maxNumber);
   } while (isReshuffled(randomNum));
 
   winners[randomNum] = { ...winners[randomNum], isWin: true };
 
-  connectedSockets.forEach((socket) => {
-    socket.send(`${randomNum >= 170 ? 1 : ""}${randomNum.toString()}`);
-  });
+  announceAllConnectedSockets(
+    JSON.stringify({
+      index: randomNum.toString(),
+      name: items[randomNum],
+    })
+  );
 
   winnersArray.push(randomNum);
 
@@ -99,7 +113,12 @@ server.get("/trigger", (request, reply) => {
 
 server.get("/max", (_, reply) => {
   reply.header("cors", "*");
-  reply.send(MAX_NUMBER);
+  reply.send(maxNumber);
+});
+
+server.get("/items", (_, reply) => {
+  reply.header("cors", "*");
+  reply.send(items);
 });
 
 server.get("/winners", (_, reply) => {

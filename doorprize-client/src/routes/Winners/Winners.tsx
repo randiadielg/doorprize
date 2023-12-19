@@ -8,10 +8,13 @@ import useDoorprizeWebsocket from "../../hooks/useDoorprizeWebsocket";
 
 const WinnersView = () => {
   const { data, refetch } = useGet(`${SERVER_HOST}/winners`);
-  const { data: max } = useGet(`${SERVER_HOST}/max`);
+  const { data: maxData } = useGet(`${SERVER_HOST}/max`);
+  const { data: items } = useGet(`${SERVER_HOST}/items`);
   const { number, isRandomizing, isDisconnected } = useDoorprizeWebsocket({
     onStop: refetch,
   });
+
+  const maxIdx = maxData - 1;
 
   const cancelToggle = async (num: number) => {
     await axios.post(`${SERVER_HOST}/cancel`, { number: num });
@@ -20,11 +23,11 @@ const WinnersView = () => {
 
   const emptyArray = useMemo(() => {
     var arr = [];
-    for (var i = 0; i <= max; i++) {
+    for (var i = 0; i <= maxIdx; i++) {
       arr.push("");
     }
     return arr;
-  }, [max]);
+  }, [maxIdx]);
 
   return (
     <>
@@ -57,7 +60,7 @@ const WinnersView = () => {
               style={{ margin: "0", textAlign: "center" }}
               level={5}
             >
-              {idx}
+              {items[idx]}
             </Typography.Title>
           </Card>
         ))}

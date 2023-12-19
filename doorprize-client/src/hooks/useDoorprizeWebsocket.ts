@@ -13,6 +13,7 @@ const useDoorprizeWebsocket = (props?: UseDoorprizeWebsocketProps) => {
   const { onStop = () => {}, onGetNumber = () => {} } = props || {};
   const [isRandomizing, setIsRandomizing] = useState(false);
   const [number, setNumber] = useState<number>();
+  const [name, setName] = useState<string>("");
   const [isDisconnected, setIsDisconnected] = useState(true);
 
   useEffect(() => {
@@ -22,13 +23,20 @@ const useDoorprizeWebsocket = (props?: UseDoorprizeWebsocketProps) => {
     };
     client.onmessage = (message) => {
       const stringMessage = message.data.toString();
-      if (stringMessage === "stop") {
-        setIsRandomizing(false);
-        onStop();
-      } else {
-        setNumber(parseInt(stringMessage));
-        setIsRandomizing(true);
-        onGetNumber();
+      try {
+        if (stringMessage === "stop") {
+          setIsRandomizing(false);
+          onStop();
+        } else {
+          const { name, index } = JSON.parse(stringMessage);
+
+          setNumber(parseInt(index));
+          setName(name);
+          setIsRandomizing(true);
+          onGetNumber();
+        }
+      } catch (err) {
+        console.error(err);
       }
     };
     client.onclose = () => {
@@ -45,7 +53,7 @@ const useDoorprizeWebsocket = (props?: UseDoorprizeWebsocketProps) => {
     };
   }, [onStop, onGetNumber]);
 
-  return { isRandomizing, number, isDisconnected };
+  return { isRandomizing, number, name, isDisconnected };
 };
 
 export default useDoorprizeWebsocket;
