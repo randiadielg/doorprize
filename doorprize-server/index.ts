@@ -173,7 +173,7 @@ server.get("/stop", (request, reply) => {
   reply.send("Stopped Randomizing");
 });
 
-server.listen({ port: 5000, host: "192.168.53.59" }, (err, address) => {
+server.listen({ port: 5000, host: "192.168.1.100" }, (err, address) => {
   if (err) {
     console.error(err);
     process.exit(1);

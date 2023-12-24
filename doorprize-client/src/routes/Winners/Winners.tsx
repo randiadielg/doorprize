@@ -10,7 +10,7 @@ const WinnersView = () => {
   const { data, refetch } = useGet(`${SERVER_HOST}/winners`);
   const { data: maxData } = useGet(`${SERVER_HOST}/max`);
   const { data: items } = useGet(`${SERVER_HOST}/items`);
-  const { number, isRandomizing, isDisconnected } = useDoorprizeWebsocket({
+  const { persons, isRandomizing, isDisconnected } = useDoorprizeWebsocket({
     onStop: refetch,
   });
 
@@ -35,7 +35,7 @@ const WinnersView = () => {
         <Alert message="Connection Disconnected, Please Refresh" type="error" />
       )}
       <Space size={[8, 16]} wrap>
-        {emptyArray.map((_, idx) => (
+        {emptyArray?.map((_, idx) => (
           <Card
             onClick={() => {
               cancelToggle(idx);
@@ -44,7 +44,9 @@ const WinnersView = () => {
             style={{
               cursor: "pointer",
               animation:
-                idx === number && !isRandomizing && !data[idx]?.isCancelled
+                Boolean(persons?.find((person) => idx === person.index)) &&
+                !isRandomizing &&
+                !data[idx]?.isCancelled
                   ? "success-blink 2s infinite"
                   : "",
               transition: "1s",

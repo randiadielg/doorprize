@@ -4,6 +4,11 @@ import { DOORPRIZE_WS_HOST } from "../constants";
 
 let client = new w3cwebsocket(DOORPRIZE_WS_HOST);
 
+interface Person {
+  index: number;
+  name: string;
+}
+
 interface UseDoorprizeWebsocketProps {
   onStop?: () => void;
   onGetNumber?: () => void;
@@ -12,8 +17,7 @@ interface UseDoorprizeWebsocketProps {
 const useDoorprizeWebsocket = (props?: UseDoorprizeWebsocketProps) => {
   const { onStop = () => {}, onGetNumber = () => {} } = props || {};
   const [isRandomizing, setIsRandomizing] = useState(false);
-  const [number, setNumber] = useState<number>();
-  const [name, setName] = useState<string>("");
+  const [persons, setPersons] = useState<Person[]>();
   const [isDisconnected, setIsDisconnected] = useState(true);
 
   useEffect(() => {
@@ -28,10 +32,9 @@ const useDoorprizeWebsocket = (props?: UseDoorprizeWebsocketProps) => {
           setIsRandomizing(false);
           onStop();
         } else {
-          const { name, index } = JSON.parse(stringMessage);
+          const persons = JSON.parse(stringMessage);
 
-          setNumber(parseInt(index));
-          setName(name);
+          setPersons(persons);
           setIsRandomizing(true);
           onGetNumber();
         }
@@ -53,7 +56,7 @@ const useDoorprizeWebsocket = (props?: UseDoorprizeWebsocketProps) => {
     };
   }, [onStop, onGetNumber]);
 
-  return { isRandomizing, number, name, isDisconnected };
+  return { isRandomizing, persons, isDisconnected };
 };
 
 export default useDoorprizeWebsocket;

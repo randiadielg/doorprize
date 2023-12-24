@@ -1,18 +1,18 @@
-import { Alert, Button, Typography } from "antd";
+import { Alert, Button, InputNumber, Typography } from "antd";
 import { SERVER_HOST } from "../../constants";
 import useDoorprizeWebsocket from "../../hooks/useDoorprizeWebsocket";
-import useGet from "../../hooks/useGet";
+import { useState } from "react";
 
 const Remote = () => {
-  const { data: items } = useGet(`${SERVER_HOST}/items`);
-  const { number, isRandomizing, isDisconnected } = useDoorprizeWebsocket();
+  const { persons, isRandomizing, isDisconnected } = useDoorprizeWebsocket();
+  const [count, setCount] = useState<number | null>(1);
 
   const handleButtonClick = async () => {
     if (isRandomizing) {
       await fetch(`${SERVER_HOST}/stop`);
       return;
     }
-    await fetch(`${SERVER_HOST}/trigger`);
+    await fetch(`${SERVER_HOST}/trigger?count=${count || 1}`);
   };
 
   return (
@@ -26,9 +26,11 @@ const Remote = () => {
           flexDirection: "column",
         }}
       >
-        {number && (
+        {persons && (
           <Typography.Title>
-            {isRandomizing ? "Shuffling..." : String(items[number])}
+            {isRandomizing
+              ? "Shuffling..."
+              : persons.map((person) => <>{person.name}, </>)}
           </Typography.Title>
         )}
         {isDisconnected && (
@@ -45,6 +47,7 @@ const Remote = () => {
         >
           {!isRandomizing ? <>Randomize!</> : <>Stop</>}
         </Button>
+        <InputNumber value={count} onChange={setCount} />
       </div>
     </>
   );
