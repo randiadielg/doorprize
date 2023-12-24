@@ -1,11 +1,13 @@
-import Fastify, { FastifyInstance } from "fastify";
+import Fastify from "fastify";
+import type { FastifyInstance } from "fastify";
 import FastifyWebsocket from "@fastify/websocket";
 import FastifyCors from "@fastify/cors";
 import fs from "fs";
+import type { WebSocket } from "ws";
 
 const server: FastifyInstance = Fastify({});
 
-const connectedSockets: any[] = [];
+let connectedSockets = new Set<WebSocket>();
 
 let winnersArray: number[] = [];
 let winners: Record<string, any> = { 0: { isCancelled: true } };
@@ -54,7 +56,7 @@ server.register(async (server) => {
   server.get("/doorprize", { websocket: true }, (connection, req) => {
     // Client connect
     console.log("Client connected");
-    connectedSockets.push(connection.socket);
+    connectedSockets.add(connection.socket);
 
     // Client message
     // connection.socket.on("message", (message) => {
@@ -65,14 +67,18 @@ server.register(async (server) => {
     // });
     // Client disconnect
     connection.socket.on("close", () => {
+      connectedSockets.delete(connection.socket);
       console.log("Client disconnected");
     });
   });
 });
 
 const isReshuffled = (num: number) => {
+  // all algorithm to check eligibility of the winner
   if (Boolean(winners[num]?.isCancelled)) return true;
   if (winners[num]?.isWin) return true;
+
+  // all algorithm to check every adjustment to make the doorprize fair
   if (Object.keys(winners).length < 0.2 * maxNumber) {
     if (winners[num + 1]) return true;
     if (winners[num + 2]) return true;
@@ -88,24 +94,39 @@ server.get("/ping", (_, reply) => {
   });
 });
 
-server.get("/trigger", (request, reply) => {
-  reply.header("cors", "*");
+const getRandomizedNumber = () => {
   let randomNum = -1;
 
   do {
-    randomNum = Math.round(Math.random() * maxNumber);
+    randomNum = Math.round(Math.random() * maxNumber - 1);
   } while (isReshuffled(randomNum));
 
   winners[randomNum] = { ...winners[randomNum], isWin: true };
+  return randomNum;
+};
 
-  announceAllConnectedSockets(
-    JSON.stringify({
-      index: randomNum.toString(),
-      name: items[randomNum],
-    })
-  );
+server.get("/trigger", (request, reply) => {
+  // Lazy Typecasting
+  const { count } = request.query as { count: string };
+  const intCount = parseInt(count);
 
-  winnersArray.push(randomNum);
+  reply.header("cors", "*");
+  const randomizedPersons = [
+    ...Array(count && Number.isInteger(intCount) ? intCount : 1),
+  ].map(() => {
+    const number = getRandomizedNumber();
+    return {
+      index: number,
+      name: items[number],
+    };
+  });
+
+  announceAllConnectedSockets(JSON.stringify(randomizedPersons));
+
+  winnersArray = [
+    ...winnersArray,
+    ...randomizedPersons.map((person) => person.index),
+  ];
 
   syncToDb();
   reply.send("Started Randomizing");
@@ -152,7 +173,7 @@ server.get("/stop", (request, reply) => {
   reply.send("Stopped Randomizing");
 });
 
-server.listen({ port: 5000, host: "localhost" }, (err, address) => {
+server.listen({ port: 5000, host: "192.168.53.59" }, (err, address) => {
   if (err) {
     console.error(err);
     process.exit(1);
